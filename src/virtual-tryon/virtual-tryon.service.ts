@@ -2,14 +2,16 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { UploadService } from '../upload/upload.service';
 import { CloudinaryResponse } from '../upload/interfaces/cloudinary-response.interface';
 import { TryOnResult } from './interfaces/try-on-result.interface';
+import { Express } from 'express';
 import axios from 'axios';
 
 @Injectable()
 export class VirtualTryOnService {
   constructor(private readonly uploadService: UploadService) {}
 
+  // Solution 1: Update method to accept proper Express.Multer.File
   async generateTryOn(
-    productImage: { buffer: Buffer },
+    productImage: Express.Multer.File,
     userMeasurements: any,
     modelType: '2d' | '3d' = '2d',
   ): Promise<TryOnResult> {
@@ -63,8 +65,40 @@ export class VirtualTryOnService {
     }
   }
 
+  // Solution 2: Alternative method that creates a file object from buffer
+  async generateTryOnFromBuffer(
+    buffer: Buffer,
+    originalname: string,
+    mimetype: string,
+    userMeasurements: any,
+    modelType: '2d' | '3d' = '2d',
+  ): Promise<TryOnResult> {
+    try {
+      // Create a mock file object from buffer
+      const mockFile: Express.Multer.File = {
+        fieldname: 'productImage',
+        originalname: originalname,
+        encoding: '7bit',
+        mimetype: mimetype,
+        size: buffer.length,
+        buffer: buffer,
+        stream: undefined as any,
+        destination: '',
+        filename: '',
+        path: '',
+      };
+
+      // Use the existing generateTryOn method
+      return await this.generateTryOn(mockFile, userMeasurements, modelType);
+    } catch (error) {
+      throw new BadRequestException(
+        'Error generating virtual try-on from buffer: ' + error.message,
+      );
+    }
+  }
+
   async generateBatchTryOn(
-    productImages: Array<{ buffer: Buffer }>,
+    productImages: Array<Express.Multer.File>,
     userMeasurements: any,
     modelType: '2d' | '3d' = '2d',
   ): Promise<TryOnResult[]> {
@@ -82,6 +116,32 @@ export class VirtualTryOnService {
     }
   }
 
+  // Alternative batch method for buffers
+  async generateBatchTryOnFromBuffers(
+    productImages: Array<{ buffer: Buffer; originalname: string; mimetype: string }>,
+    userMeasurements: any,
+    modelType: '2d' | '3d' = '2d',
+  ): Promise<TryOnResult[]> {
+    try {
+      const results = await Promise.all(
+        productImages.map(image =>
+          this.generateTryOnFromBuffer(
+            image.buffer,
+            image.originalname,
+            image.mimetype,
+            userMeasurements,
+            modelType,
+          ),
+        ),
+      );
+      return results;
+    } catch (error) {
+      throw new BadRequestException(
+        'Error generating batch virtual try-on from buffers: ' + error.message,
+      );
+    }
+  }
+
   async saveVirtualTryOn(
     userId: string,
     productId: string,
@@ -90,4 +150,4 @@ export class VirtualTryOnService {
     // TODO: Implement saving try-on results to database
     // This would store the results for later viewing in the user's virtual wardrobe
   }
-} 
+}

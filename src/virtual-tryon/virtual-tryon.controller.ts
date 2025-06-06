@@ -13,15 +13,7 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiConsumes, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VirtualTryOnService } from './virtual-tryon.service';
-
-interface UploadedFileType {
-  fieldname: string;
-  originalname: string;
-  encoding: string;
-  mimetype: string;
-  buffer: Buffer;
-  size: number;
-}
+import { Express } from 'express';
 
 @ApiTags('virtual-tryon')
 @Controller('virtual-tryon')
@@ -36,7 +28,7 @@ export class VirtualTryOnController {
   @ApiResponse({ status: 201, description: 'Virtual try-on generated successfully' })
   @UseInterceptors(FileInterceptor('image'))
   async generateTryOn(
-    @UploadedFile() file: UploadedFileType,
+    @UploadedFile() file: Express.Multer.File,
     @Body('measurements') measurements: string,
     @Query('modelType') modelType: '2d' | '3d' = '2d',
   ) {
@@ -48,7 +40,12 @@ export class VirtualTryOnController {
       throw new BadRequestException('No measurements provided');
     }
 
-    const parsedMeasurements = JSON.parse(measurements);
+    let parsedMeasurements;
+    try {
+      parsedMeasurements = JSON.parse(measurements);
+    } catch (error) {
+      throw new BadRequestException('Invalid measurements format. Must be valid JSON.');
+    }
 
     return this.virtualTryOnService.generateTryOn(
       file,
@@ -63,7 +60,7 @@ export class VirtualTryOnController {
   @ApiResponse({ status: 201, description: 'Batch virtual try-on generated successfully' })
   @UseInterceptors(FilesInterceptor('images', 10)) // Max 10 images
   async generateBatchTryOn(
-    @UploadedFiles() files: UploadedFileType[],
+    @UploadedFiles() files: Express.Multer.File[],
     @Body('measurements') measurements: string,
     @Query('modelType') modelType: '2d' | '3d' = '2d',
   ) {
@@ -75,7 +72,12 @@ export class VirtualTryOnController {
       throw new BadRequestException('No measurements provided');
     }
 
-    const parsedMeasurements = JSON.parse(measurements);
+    let parsedMeasurements;
+    try {
+      parsedMeasurements = JSON.parse(measurements);
+    } catch (error) {
+      throw new BadRequestException('Invalid measurements format. Must be valid JSON.');
+    }
 
     return this.virtualTryOnService.generateBatchTryOn(
       files,
@@ -83,4 +85,4 @@ export class VirtualTryOnController {
       modelType,
     );
   }
-} 
+}

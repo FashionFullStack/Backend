@@ -4,14 +4,8 @@ import { ApiTags, ApiConsumes, ApiOperation, ApiResponse, ApiBearerAuth } from '
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
 
-interface UploadedFileType {
-  fieldname: string;
-  originalname: string;
-  encoding: string;
-  mimetype: string;
-  buffer: Buffer;
-  size: number;
-}
+// Use the proper Multer file type instead of custom interface
+import { Express } from 'express';
 
 @ApiTags('upload')
 @Controller('upload')
@@ -25,7 +19,7 @@ export class UploadController {
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Avatar uploaded successfully' })
   @UseInterceptors(FileInterceptor('file'))
-  async uploadAvatar(@UploadedFile() file: UploadedFileType) {
+  async uploadAvatar(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -57,4 +51,4 @@ export class UploadController {
       throw new BadRequestException('Error deleting avatar');
     }
   }
-} 
+}

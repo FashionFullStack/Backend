@@ -16,7 +16,8 @@ export class AuthService {
   async validateUser(email: string, password: string): Promise<any> {
     try {
       const user = await this.usersService.findByEmail(email);
-      if (user && await bcrypt.compare(password, user.password)) {
+      // Fix: Add proper type checking for user.password
+      if (user && user.password && typeof user.password === 'string' && await bcrypt.compare(password, user.password)) {
         const { password, ...result } = user.toObject();
         return result;
       }
@@ -101,4 +102,4 @@ export class AuthService {
       }),
     };
   }
-} 
+}
